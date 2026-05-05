@@ -203,9 +203,5 @@ Built-in safeguards:
 
 This **does not absolve** the operator of responsibility. Never leave a running process unattended.
 
-## 📜 License
-
-GPL v2 — see [LICENSE](LICENSE).
-
 ---
 **Version:** 48.0 (Modern Web UI)
