@@ -1,0 +1,27 @@
+# Sensitive data - DO NOT COMMIT!
+secrets.h
+
+# Arduino build artifacts
+build/
+*.elf
+*.hex
+*.bin
+*.eep
+*.map
+*.o
+*.a
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor/IDE config
+.vscode/
+.idea/
+
+# Python
+__pycache__/
+*.pyc
+
+# Generated UI preview - regenerated from index.h via regen_preview.py
+web_ui_preview.html
