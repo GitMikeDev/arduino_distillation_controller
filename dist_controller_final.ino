@@ -541,8 +541,19 @@ void handleHttpClient() {
                     client.println("HTTP/1.1 200 OK");
                     client.println("Content-type: text/html; charset=utf-8");
                     client.println("Connection: close");
+                    client.print("Content-Length: ");
+                    client.println(sizeof(index_html) - 1);
                     client.println();
-                    client.print(index_html);
+                    // WiFiNINA cannot handle a single write >4KB - send in chunks
+                    const char* ptr = index_html;
+                    size_t remaining = sizeof(index_html) - 1;
+                    while (remaining > 0) {
+                        size_t chunk = remaining > 512 ? 512 : remaining;
+                        size_t sent = client.write((const uint8_t*)ptr, chunk);
+                        if (sent == 0) break;
+                        ptr += sent;
+                        remaining -= sent;
+                    }
                 }
                 else {
                     // AJAX request - data refresh or button click
@@ -766,8 +777,14 @@ void softwareReset() {
 #if defined(ARDUINO_ARCH_SAMD)
     // MKR WiFi 1010 / Nano 33 IoT - full CPU + peripheral reset (Cortex-M0+)
     NVIC_SystemReset();
+#elif defined(ARDUINO_ARCH_MEGAAVR) || defined(__AVR_ATmega4809__)
+    // Uno WiFi Rev2 / Nano Every (ATmega4809) - software reset via RSTCTRL
+    // wdt_enable() from avr/wdt.h does NOT work on megaAVR-0 (different WDT register)
+    CPU_CCP = CCP_IOREG_gc;
+    RSTCTRL.SWRR = RSTCTRL_SWRE_bm;
+    while (1) { ; }
 #elif defined(__AVR__)
-    // Uno WiFi Rev2 / Nano with NINA - reset via watchdog timer
+    // Older AVR (ATmega328P etc.) - reset via watchdog timer
     wdt_enable(WDTO_15MS);
     while (1) { ; }
 #else
