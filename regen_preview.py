@@ -14,12 +14,6 @@ ROOT = Path(__file__).parent
 SRC = ROOT / "index.h"
 DST = ROOT / "web_ui_preview.html"
 
-content = SRC.read_text(encoding="utf-8")
-m = re.search(r'R"rawliteral\((.*)\)rawliteral";', content, re.DOTALL)
-if not m:
-    raise SystemExit("rawliteral block not found in index.h")
-html = m.group(1).strip()
-
 MOCK = """
 <!-- ===== MOCK LAYER (offline preview only - not present on real Arduino) ===== -->
 <script>
@@ -44,8 +38,7 @@ MOCK = """
         if (colT < 76.5) colT += 0.05;
         if (kegT < 95) kegT += 0.003;
         if (rate > 0 && isStable && !paused) {
-            const phys = rate < 20 ? 20 : rate;
-            const delta = (phys / 60) * 1.5 * 1.35;
+            const delta = (rate / 60) * 1.35;
             if (state === 'Foreshots') foreVol += delta;
             else if (state === 'Hearts') heartVol += delta;
             else if (state === 'Tails') tailVol += delta;
@@ -138,6 +131,17 @@ MOCK = """
 </script>
 """
 
-html = html.replace("</body>", MOCK + "</body>")
-DST.write_text(html, encoding="utf-8")
-print(f"OK -> {DST.name}  ({len(html)} bytes)")
+
+def main():
+    content = SRC.read_text(encoding="utf-8")
+    m = re.search(r'R"rawliteral\((.*)\)rawliteral";', content, re.DOTALL)
+    if not m:
+        raise SystemExit("rawliteral block not found in index.h")
+    html = m.group(1).strip()
+    html = html.replace("</body>", MOCK + "</body>")
+    DST.write_text(html, encoding="utf-8")
+    print(f"OK -> {DST.name}  ({len(html)} bytes)")
+
+
+if __name__ == "__main__":
+    main()

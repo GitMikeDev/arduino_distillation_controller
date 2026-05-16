@@ -174,11 +174,9 @@ class Sim:
     def update_collected_volume(self, dt_seconds):
         if self.collectionRate <= 0:
             return
-        if 0 < self.collectionRate < MIN_PWM_COLLECTION_RATE:
-            actual = MIN_PWM_COLLECTION_RATE
-        else:
-            actual = self.collectionRate
-        delta = actual * (dt_seconds / 60.0) * VOLUME_CALIBRATION_FACTOR
+        # Simulation models average flow directly - use collectionRate as-is.
+        # (Hardware PWM pulses the pump physically; simulation integrates the mean rate.)
+        delta = self.collectionRate * (dt_seconds / 60.0) * VOLUME_CALIBRATION_FACTOR
         if self.state == State.FORESHOTS:
             self.foreshotsVolume += delta
         elif self.state == State.HEARTS:
@@ -275,7 +273,12 @@ def run_csv_replay(path):
     # Replay
     csv_volume = 0.0
     last_t = 0
-    prev_active_csv_rate = initial_rate if initial_rate > 0 else INITIAL_RATE_HEARTS
+    initial_rate_fallback = {
+        State.FORESHOTS: INITIAL_RATE_FORESHOTS,
+        State.HEARTS:    INITIAL_RATE_HEARTS,
+        State.TAILS:     INITIAL_RATE_TAILS,
+    }.get(sim.state, INITIAL_RATE_HEARTS)
+    prev_active_csv_rate = initial_rate if initial_rate > 0 else initial_rate_fallback
     manual_plus_clicks = 0
 
     for i, row in enumerate(rows):
@@ -289,8 +292,7 @@ def run_csv_replay(path):
         if i > 0:
             dt_csv = sim.t - last_t
             if csv_rate > 0:
-                phys = MIN_PWM_COLLECTION_RATE if 0 < csv_rate < MIN_PWM_COLLECTION_RATE else csv_rate
-                csv_volume += phys * (dt_csv / 60.0) * VOLUME_CALIBRATION_FACTOR
+                csv_volume += csv_rate * (dt_csv / 60.0) * VOLUME_CALIBRATION_FACTOR
         last_t = sim.t
 
         # Detect manual operator intervention from CSV:

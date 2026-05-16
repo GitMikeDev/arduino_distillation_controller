@@ -13,6 +13,8 @@
 #include <PubSubClient.h>
 #if defined(__AVR__)
 #include <avr/wdt.h>
+#elif defined(ARDUINO_ARCH_SAMD)
+#include <Adafruit_SleepyDog.h>
 #endif
 #include "secrets.h"
 #include "index.h"
@@ -77,6 +79,7 @@ OneWire oneWire(ONE_WIRE_BUS);
 DallasTemperature tempSensors(&oneWire);
 Adafruit_BMP280 bmp;
 Adafruit_Sensor *pressureSensor = bmp.getPressureSensor();
+bool bmpOk = false;
 WiFiServer server(80);
 WiFiClient mqttWifiClient;
 PubSubClient mqttClient(mqttWifiClient);
@@ -174,6 +177,11 @@ void setup() {
 
     testMotor();
 
+#if defined(ARDUINO_ARCH_SAMD)
+    Watchdog.enable(4000);  // 4s watchdog - main loop never blocks longer than this
+    Serial.println("SAMD watchdog enabled (4s).");
+#endif
+
     Serial.println("\nInitialization Complete. System is running.");
     Serial.println("=============================================");
 }
@@ -181,6 +189,10 @@ void setup() {
 // --- MAIN LOOP ---
 void loop() {
     unsigned long currentTime = millis();
+
+#if defined(ARDUINO_ARCH_SAMD)
+    Watchdog.reset();
+#endif
 
     handleHttpClient();
     handleButton();
@@ -581,12 +593,12 @@ void handleHttpClient() {
                     client.println();
                     client.print(respBuf);
                 }
-                delay(5);
                 break;
             }
             if (c == '\n') { currentLineIsBlank = true; } else if (c != '\r') { currentLineIsBlank = false; }
         }
     }
+    client.flush();
     client.stop();
 
     // Deferred restart - after response delivered and socket closed
@@ -631,7 +643,7 @@ void completeSensorRead() {
     kegTemperature    = tempSensors.getTempC(kegSensorAddress);
     columnTemperature = tempSensors.getTempC(columnSensorAddress);
     sensors_event_t pe;
-    if (pressureSensor) { pressureSensor->getEvent(&pe); pressure = pe.pressure; }
+    if (bmpOk) { pressureSensor->getEvent(&pe); pressure = pe.pressure; }
     tempConversionPending = false;
 
     updateBoilingPoint();
@@ -668,7 +680,8 @@ void initializeSensors() {
     tempSensors.setResolution(columnSensorAddress, TEMPERATURE_PRECISION);
     tempSensors.setWaitForConversion(false);  // async mode - requestTemperatures() does not block
     Serial.print("Found "); Serial.print(tempSensors.getDeviceCount()); Serial.println(" temperature sensors.");
-    if (!bmp.begin(0x76)) { Serial.println("ERROR: BMP280 sensor not found!"); }
+    bmpOk = bmp.begin(0x76);
+    if (!bmpOk) { Serial.println("ERROR: BMP280 sensor not found!"); }
     else {
         bmp.setSampling(Adafruit_BMP280::MODE_NORMAL, Adafruit_BMP280::SAMPLING_X2,
                         Adafruit_BMP280::SAMPLING_X16, Adafruit_BMP280::FILTER_X16,
