@@ -1,5 +1,7 @@
 # Arduino Distillation Column Controller (v48.0)
 
+> A hobby project from my university days — recently dusted off and modernized with the help of AI.
+
 Distillation process controller built around an Arduino MCU with a WiFiNINA module. Provides precise control of fraction collection (foreshots / hearts / tails), automatic boiling-point compensation versus atmospheric pressure, online monitoring via MQTT (ThingSpeak), and a responsive web UI accessible from any phone browser on the local network.
 
 ## 🚀 Key features
